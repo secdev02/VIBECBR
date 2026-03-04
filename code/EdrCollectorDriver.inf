@@ -1,0 +1,77 @@
+; EdrCollectorDriver.inf
+; Windows Driver INF for the EDR Telemetry Collector kernel driver.
+; Required for proper driver signing, installation, and WFP callout registration.
+;
+; Production deployment requires an Extended Validation (EV) code signing certificate.
+; For development and testing use: bcdedit /set testsigning on
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = "ActivityMonitor"
+ClassGuid   = {b86dff51-a31e-4bac-b3cf-e8cfe75c9fc2}
+Provider    = %ManufacturerName%
+DriverVer   = 03/03/2026,1.0.0.0
+CatalogFile = EdrCollectorDriver.cat
+
+[DestinationDirs]
+DefaultDestDir = 12   ; %windir%\System32\drivers
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+EdrCollectorDriver.sys = 1,,
+
+;------------------------------------------------------------------------------
+; Install sections
+;------------------------------------------------------------------------------
+[DefaultInstall.NTAMD64]
+OptionDesc = %ServiceDescription%
+CopyFiles  = EdrCollector.CopyFiles
+
+[DefaultInstall.NTAMD64.Services]
+AddService = %ServiceName%,,EdrCollector.Service
+
+[DefaultUninstall.NTAMD64]
+DelFiles = EdrCollector.CopyFiles
+
+[DefaultUninstall.NTAMD64.Services]
+DelService = %ServiceName%,0x200
+
+[EdrCollector.CopyFiles]
+EdrCollectorDriver.sys,,,0x00000040   ; COPYFLG_OVERWRITE_OLDER_ONLY
+
+[EdrCollector.Service]
+DisplayName    = %ServiceDescription%
+Description    = %ServiceDescription%
+ServiceBinary  = %12%\EdrCollectorDriver.sys
+ServiceType    = 2                  ; SERVICE_FILE_SYSTEM_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+LoadOrderGroup = "FSFilter Activity Monitor"
+Dependencies   = FltMgr
+AddReg         = EdrCollector.AddReg
+
+[EdrCollector.AddReg]
+HKR,,"SupportedFeatures",0x00010001,0x3
+HKR,"Instances","DefaultInstance",0x00000000,%DefaultInstance%
+HKR,"Instances\"%DefaultInstance%","Altitude",0x00000000,%DefaultAltitude%
+HKR,"Instances\"%DefaultInstance%","Flags",0x00010001,0x0
+
+;------------------------------------------------------------------------------
+; WFP callout registration (added to HKLM\SYSTEM\CurrentControlSet\Services\...)
+;------------------------------------------------------------------------------
+[EdrCollector.AddReg]
+; Altitude in the 320000-329999 range = Activity Monitor
+HKR,,"Altitude",0x00000000,"320000"
+
+;------------------------------------------------------------------------------
+; String substitutions
+;------------------------------------------------------------------------------
+[Strings]
+ManufacturerName    = "EdrCollector"
+ServiceName         = "EdrCollector"
+ServiceDescription  = "EDR Telemetry Collector Kernel Driver"
+DiskName            = "EDR Collector Installation Disk"
+DefaultInstance     = "EdrCollector Instance"
+DefaultAltitude     = "320000"
